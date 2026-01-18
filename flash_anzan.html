@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フラッシュ暗算トレーニング</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        #display {
+            font-size: 6rem;
+            font-weight: bold;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        #inputSection {
+            display: none;
+            margin: 2rem 0;
+        }
+
+        #answerInput {
+            font-size: 2rem;
+            padding: 0.5rem 1rem;
+            width: 200px;
+            text-align: center;
+            border: 2px solid #333;
+            border-radius: 4px;
+        }
+
+        button {
+            font-size: 1.2rem;
+            padding: 0.75rem 2rem;
+            margin: 0.5rem;
+            background-color: #000;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #333;
+        }
+
+        button:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+
+        #result {
+            font-size: 1.5rem;
+            margin: 1rem 0;
+            min-height: 40px;
+        }
+
+        .correct {
+            color: #008000;
+        }
+
+        .incorrect {
+            color: #ff0000;
+        }
+
+        #startButton {
+            font-size: 1.5rem;
+            padding: 1rem 3rem;
+        }
+
+        .settings {
+            margin: 2rem 0;
+        }
+
+        .settings label {
+            display: inline-block;
+            margin: 0 1rem;
+            font-size: 1.2rem;
+        }
+
+        .settings input {
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            width: 80px;
+            text-align: center;
+            border: 2px solid #333;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
+        #settingsDisplay {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            min-height: 40px;
+            display: none;
+        }
+
+        #timer {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ff0000;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        #endButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 1rem;
+            padding: 0.5rem 1.5rem;
+            display: none;
+        }
+
+        #resultSection {
+            display: none;
+        }
+
+        .result-stats {
+            font-size: 2rem;
+            margin: 2rem 0;
+            line-height: 2.5;
+        }
+
+        .result-stats .big {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>フラッシュ暗算トレーニング</h1>
+        <div id="settingsDisplay"></div>
+        <div id="timer"></div>
+        <div id="display"></div>
+
+        <button id="endButton">終了</button>
+
+        <div id="startSection">
+            <div class="settings">
+                <label>
+                    フラッシュ秒数:
+                    <input type="number" id="flashSeconds" value="7" min="1" max="30">
+                    秒
+                </label>
+                <br><br>
+                <label>
+                    問題数:
+                    <input type="number" id="problemCount" value="4" min="2" max="10">
+                    口
+                </label>
+            </div>
+            <button id="startButton">開始</button>
+        </div>
+
+        <div id="inputSection">
+            <input type="number" id="answerInput" placeholder="答えを入力" autofocus>
+            <br>
+            <button id="checkButton">確認</button>
+        </div>
+
+        <div id="result"></div>
+
+        <div id="resultSection">
+            <h2>結果</h2>
+            <div class="result-stats">
+                <div>正答数: <span class="big" id="correctCount">0</span> / <span id="totalCount">0</span></div>
+                <div>正答率: <span class="big" id="accuracy">0</span>%</div>
+            </div>
+            <button id="restartButton">最初に戻る</button>
+        </div>
+    </div>
+
+    <script>
+        let numbers = [];
+        let correctAnswer = 0;
+        let isRunning = false;
+        let flashSeconds = 7;
+        let problemCount = 4;
+        let timerInterval = null;
+        let remainingTime = 10;
+        let totalProblems = 0;
+        let correctProblems = 0;
+
+        const display = document.getElementById('display');
+        const startButton = document.getElementById('startButton');
+        const startSection = document.getElementById('startSection');
+        const inputSection = document.getElementById('inputSection');
+        const answerInput = document.getElementById('answerInput');
+        const checkButton = document.getElementById('checkButton');
+        const result = document.getElementById('result');
+        const settingsDisplay = document.getElementById('settingsDisplay');
+        const flashSecondsInput = document.getElementById('flashSeconds');
+        const problemCountInput = document.getElementById('problemCount');
+        const timer = document.getElementById('timer');
+        const endButton = document.getElementById('endButton');
+        const resultSection = document.getElementById('resultSection');
+        const correctCountDisplay = document.getElementById('correctCount');
+        const totalCountDisplay = document.getElementById('totalCount');
+        const accuracyDisplay = document.getElementById('accuracy');
+        const restartButton = document.getElementById('restartButton');
+
+        // Generate random 2-digit numbers with sum between 100-999
+        function generateNumbers() {
+            let attempts = 0;
+            const maxAttempts = 10000;
+
+            while (attempts < maxAttempts) {
+                numbers = [];
+                for (let i = 0; i < problemCount; i++) {
+                    numbers.push(Math.floor(Math.random() * 90) + 10); // 10-99
+                }
+
+                const sum = numbers.reduce((a, b) => a + b, 0);
+
+                if (sum >= 100 && sum <= 999) {
+                    correctAnswer = sum;
+                    return true;
+                }
+
+                attempts++;
+            }
+
+            return false;
+        }
+
+        // Countdown sequence
+        async function countdown() {
+            // Show settings display
+            settingsDisplay.textContent = `${flashSeconds}秒${problemCount}口`;
+            settingsDisplay.style.display = 'block';
+
+            const countdownNumbers = ['3', '2', '1', 'スタート！'];
+
+            for (let count of countdownNumbers) {
+                display.textContent = count;
+                await sleep(1000);
+            }
+        }
+
+        // Flash numbers sequence
+        async function flashNumbers() {
+            for (let num of numbers) {
+                display.textContent = num;
+                await sleep(flashSeconds * 1000); // Use configured seconds per number
+            }
+
+            display.textContent = '';
+        }
+
+        // Sleep utility
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Start countdown timer
+        function startTimer() {
+            remainingTime = 10;
+            timer.textContent = `残り時間: ${remainingTime}秒`;
+            timer.style.display = 'block';
+
+            timerInterval = setInterval(() => {
+                remainingTime--;
+                timer.textContent = `残り時間: ${remainingTime}秒`;
+
+                if (remainingTime <= 0) {
+                    clearInterval(timerInterval);
+                    timer.style.display = 'none';
+                    // Auto-submit when time runs out
+                    if (!answerInput.disabled) {
+                        checkAnswer();
+                    }
+                }
+            }, 1000);
+        }
+
+        // Stop countdown timer
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timer.style.display = 'none';
+        }
+
+        // Show result screen
+        function showResultScreen() {
+            // Stop any running timer
+            stopTimer();
+
+            // Hide all other sections
+            startSection.style.display = 'none';
+            inputSection.style.display = 'none';
+            result.style.display = 'none';
+            settingsDisplay.style.display = 'none';
+            display.style.display = 'none';
+            timer.style.display = 'none';
+            endButton.style.display = 'none';
+
+            // Calculate accuracy
+            const accuracy = totalProblems > 0 ? Math.round((correctProblems / totalProblems) * 100) : 0;
+
+            // Update result display
+            correctCountDisplay.textContent = correctProblems;
+            totalCountDisplay.textContent = totalProblems;
+            accuracyDisplay.textContent = accuracy;
+
+            // Show result section
+            resultSection.style.display = 'block';
+        }
+
+        // Reset to initial state
+        function resetToStart() {
+            // Reset counters
+            totalProblems = 0;
+            correctProblems = 0;
+
+            // Stop timer
+            stopTimer();
+
+            // Hide all sections
+            inputSection.style.display = 'none';
+            result.style.display = 'none';
+            settingsDisplay.style.display = 'none';
+            timer.style.display = 'none';
+            endButton.style.display = 'none';
+            resultSection.style.display = 'none';
+
+            // Show display and start section
+            display.style.display = 'flex';
+            startSection.style.display = 'block';
+
+            // Reset fields
+            display.textContent = '';
+            result.textContent = '';
+            answerInput.value = '';
+            isRunning = false;
+        }
+
+        // Main sequence
+        async function startSequence() {
+            if (isRunning) return;
+
+            isRunning = true;
+
+            // Stop any existing timer
+            stopTimer();
+
+            // Get settings from inputs (only on first run)
+            if (totalProblems === 0) {
+                flashSeconds = parseInt(flashSecondsInput.value) || 7;
+                problemCount = parseInt(problemCountInput.value) || 4;
+            }
+
+            // Show end button
+            endButton.style.display = 'block';
+
+            startSection.style.display = 'none';
+            inputSection.style.display = 'none';
+            result.textContent = '';
+            result.className = '';
+            answerInput.value = '';
+            answerInput.disabled = false;
+            checkButton.disabled = false;
+
+            // Generate numbers
+            if (!generateNumbers()) {
+                alert('数字の生成エラー。もう一度お試しください。');
+                return;
+            }
+
+            // Run countdown
+            await countdown();
+
+            // Flash numbers
+            await flashNumbers();
+
+            // Show input section (keep settings display visible)
+            inputSection.style.display = 'block';
+            answerInput.focus();
+
+            // Start 10-second countdown timer
+            startTimer();
+
+            isRunning = false;
+        }
+
+        // Check answer
+        async function checkAnswer() {
+            // Stop the timer
+            stopTimer();
+
+            const userAnswer = parseInt(answerInput.value);
+
+            // Disable input and check button immediately
+            answerInput.disabled = true;
+            checkButton.disabled = true;
+
+            // Hide settings display when showing result
+            settingsDisplay.style.display = 'none';
+
+            // Increment total problems
+            totalProblems++;
+
+            // Check if correct
+            let isCorrect = false;
+            if (isNaN(userAnswer) || userAnswer === 0) {
+                result.textContent = `不正解。正解は ${correctAnswer} です`;
+                result.className = 'incorrect';
+            } else if (userAnswer === correctAnswer) {
+                result.textContent = '正解！';
+                result.className = 'correct';
+                isCorrect = true;
+                correctProblems++;
+            } else {
+                result.textContent = `不正解。正解は ${correctAnswer} です`;
+                result.className = 'incorrect';
+            }
+
+            // Wait exactly 3 seconds (3000ms) before showing next number
+            const startTime = Date.now();
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            const elapsed = Date.now() - startTime;
+
+            // If somehow less than 3 seconds passed, wait the remaining time
+            if (elapsed < 3000) {
+                await new Promise(resolve => setTimeout(resolve, 3000 - elapsed));
+            }
+
+            await startSequence();
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', startSequence);
+        checkButton.addEventListener('click', checkAnswer);
+        endButton.addEventListener('click', showResultScreen);
+        restartButton.addEventListener('click', resetToStart);
+
+        // Enter key to submit
+        answerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !answerInput.disabled) {
+                checkAnswer();
+            }
+        });
+    </script>
+</body>
+</html>
