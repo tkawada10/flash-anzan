@@ -117,6 +117,14 @@
             margin-left: 0.5rem;
         }
 
+        .settings select {
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            border: 2px solid #333;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
         #settingsDisplay {
             font-size: 1.5rem;
             font-weight: bold;
@@ -157,6 +165,130 @@
             font-weight: bold;
             color: #000;
         }
+
+        /* Device toggle switch */
+        .device-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            font-size: 1.2rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 30px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #000;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(30px);
+        }
+
+        .toggle-label {
+            font-weight: normal;
+            color: #999;
+            transition: color 0.3s;
+        }
+
+        .toggle-label.active {
+            font-weight: bold;
+            color: #000;
+        }
+
+        /* Numpad styles */
+        .numpad {
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 280px;
+            margin: 1rem auto;
+        }
+
+        .numpad.visible {
+            display: grid;
+        }
+
+        .numpad-btn {
+            font-size: 1.8rem;
+            padding: 1rem;
+            min-height: 60px;
+            background-color: #f0f0f0;
+            color: #000;
+            border: 2px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .numpad-btn:hover {
+            background-color: #e0e0e0;
+        }
+
+        .numpad-btn:active {
+            background-color: #d0d0d0;
+        }
+
+        .numpad-btn.action {
+            background-color: #000;
+            color: #fff;
+        }
+
+        .numpad-btn.action:hover {
+            background-color: #333;
+        }
+
+        #answerDisplay {
+            font-size: 2rem;
+            padding: 0.5rem 1rem;
+            min-width: 200px;
+            min-height: 50px;
+            text-align: center;
+            border: 2px solid #333;
+            border-radius: 4px;
+            background-color: #fff;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        #answerDisplay.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -181,12 +313,49 @@
                     <input type="number" id="problemCount" value="4" min="2" max="10">
                     口
                 </label>
+                <br><br>
+                <label>
+                    桁数:
+                    <select id="digitCount">
+                        <option value="1">1桁</option>
+                        <option value="2" selected>2桁</option>
+                        <option value="3">3桁</option>
+                    </select>
+                    <select id="digitMode">
+                        <option value="only">のみ</option>
+                        <option value="upto">以内</option>
+                    </select>
+                </label>
+                <br><br>
+                <div class="device-toggle">
+                    <span class="toggle-label active" id="pcLabel">PC</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="deviceToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label" id="tabletLabel">タブレット</span>
+                </div>
             </div>
             <button id="startButton">開始</button>
         </div>
 
         <div id="inputSection">
             <input type="number" id="answerInput" placeholder="答えを入力" autofocus>
+            <div id="answerDisplay"></div>
+            <div class="numpad" id="numpad">
+                <button type="button" class="numpad-btn" data-num="7">7</button>
+                <button type="button" class="numpad-btn" data-num="8">8</button>
+                <button type="button" class="numpad-btn" data-num="9">9</button>
+                <button type="button" class="numpad-btn" data-num="4">4</button>
+                <button type="button" class="numpad-btn" data-num="5">5</button>
+                <button type="button" class="numpad-btn" data-num="6">6</button>
+                <button type="button" class="numpad-btn" data-num="1">1</button>
+                <button type="button" class="numpad-btn" data-num="2">2</button>
+                <button type="button" class="numpad-btn" data-num="3">3</button>
+                <button type="button" class="numpad-btn action" data-action="clear">C</button>
+                <button type="button" class="numpad-btn" data-num="0">0</button>
+                <button type="button" class="numpad-btn action" data-action="delete">←</button>
+            </div>
             <br>
             <button id="checkButton">確認</button>
         </div>
@@ -209,10 +378,15 @@
         let isRunning = false;
         let flashSeconds = 7;
         let problemCount = 4;
+        let digitCount = 2;
+        let digitMode = 'only';
         let timerInterval = null;
         let remainingTime = 10;
         let totalProblems = 0;
         let correctProblems = 0;
+        let sessionEnded = false;
+        let isTabletMode = false;
+        let numpadValue = '';
 
         const display = document.getElementById('display');
         const startButton = document.getElementById('startButton');
@@ -224,6 +398,8 @@
         const settingsDisplay = document.getElementById('settingsDisplay');
         const flashSecondsInput = document.getElementById('flashSeconds');
         const problemCountInput = document.getElementById('problemCount');
+        const digitCountSelect = document.getElementById('digitCount');
+        const digitModeSelect = document.getElementById('digitMode');
         const timer = document.getElementById('timer');
         const endButton = document.getElementById('endButton');
         const resultSection = document.getElementById('resultSection');
@@ -231,35 +407,44 @@
         const totalCountDisplay = document.getElementById('totalCount');
         const accuracyDisplay = document.getElementById('accuracy');
         const restartButton = document.getElementById('restartButton');
+        const deviceToggle = document.getElementById('deviceToggle');
+        const pcLabel = document.getElementById('pcLabel');
+        const tabletLabel = document.getElementById('tabletLabel');
+        const numpad = document.getElementById('numpad');
+        const answerDisplay = document.getElementById('answerDisplay');
+        const numpadButtons = document.querySelectorAll('.numpad-btn');
 
-        // Generate random 2-digit numbers with sum between 100-999
-        function generateNumbers() {
-            let attempts = 0;
-            const maxAttempts = 10000;
-
-            while (attempts < maxAttempts) {
-                numbers = [];
-                for (let i = 0; i < problemCount; i++) {
-                    numbers.push(Math.floor(Math.random() * 90) + 10); // 10-99
-                }
-
-                const sum = numbers.reduce((a, b) => a + b, 0);
-
-                if (sum >= 100 && sum <= 999) {
-                    correctAnswer = sum;
-                    return true;
-                }
-
-                attempts++;
+        // Generate random number based on digit settings
+        function generateRandomNumber() {
+            let min, max;
+            if (digitMode === 'only') {
+                // Exactly n digits
+                min = Math.pow(10, digitCount - 1);
+                max = Math.pow(10, digitCount) - 1;
+                if (digitCount === 1) min = 1; // 1-9 for 1 digit
+            } else {
+                // Up to n digits (1 to max n-digit number)
+                min = 1;
+                max = Math.pow(10, digitCount) - 1;
             }
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
 
-            return false;
+        // Generate random numbers
+        function generateNumbers() {
+            numbers = [];
+            for (let i = 0; i < problemCount; i++) {
+                numbers.push(generateRandomNumber());
+            }
+            correctAnswer = numbers.reduce((a, b) => a + b, 0);
+            return true;
         }
 
         // Countdown sequence
         async function countdown() {
             // Show settings display
-            settingsDisplay.textContent = `${flashSeconds}秒${problemCount}口`;
+            const modeText = digitMode === 'only' ? 'のみ' : '以内';
+            settingsDisplay.textContent = `${flashSeconds}秒${problemCount}口 ${digitCount}桁${modeText}`;
             settingsDisplay.style.display = 'block';
 
             const countdownNumbers = ['3', '2', '1', 'スタート！'];
@@ -272,9 +457,12 @@
 
         // Flash numbers sequence
         async function flashNumbers() {
+            // Calculate time per number (total seconds divided equally among all numbers)
+            const msPerNumber = (flashSeconds * 1000) / problemCount;
+
             for (let num of numbers) {
                 display.textContent = num;
-                await sleep(flashSeconds * 1000); // Use configured seconds per number
+                await sleep(msPerNumber);
             }
 
             display.textContent = '';
@@ -317,6 +505,9 @@
 
         // Show result screen
         function showResultScreen() {
+            // Mark session as ended to prevent auto-continuation
+            sessionEnded = true;
+
             // Stop any running timer
             stopTimer();
 
@@ -346,6 +537,7 @@
             // Reset counters
             totalProblems = 0;
             correctProblems = 0;
+            sessionEnded = false;
 
             // Stop timer
             stopTimer();
@@ -366,6 +558,7 @@
             display.textContent = '';
             result.textContent = '';
             answerInput.value = '';
+            numpadValue = '';
             isRunning = false;
         }
 
@@ -382,6 +575,8 @@
             if (totalProblems === 0) {
                 flashSeconds = parseInt(flashSecondsInput.value) || 7;
                 problemCount = parseInt(problemCountInput.value) || 4;
+                digitCount = parseInt(digitCountSelect.value) || 2;
+                digitMode = digitModeSelect.value || 'only';
             }
 
             // Show end button
@@ -409,7 +604,11 @@
 
             // Show input section (keep settings display visible)
             inputSection.style.display = 'block';
-            answerInput.focus();
+            numpadValue = '';
+            updateInputDisplay();
+            if (!isTabletMode) {
+                answerInput.focus();
+            }
 
             // Start 10-second countdown timer
             startTimer();
@@ -459,7 +658,10 @@
                 await new Promise(resolve => setTimeout(resolve, 3000 - elapsed));
             }
 
-            await startSequence();
+            // Only continue if session hasn't ended
+            if (!sessionEnded) {
+                await startSequence();
+            }
         }
 
         // Event listeners
@@ -473,6 +675,55 @@
             if (e.key === 'Enter' && !answerInput.disabled) {
                 checkAnswer();
             }
+        });
+
+        // Device toggle handler
+        deviceToggle.addEventListener('change', () => {
+            isTabletMode = deviceToggle.checked;
+            pcLabel.classList.toggle('active', !isTabletMode);
+            tabletLabel.classList.toggle('active', isTabletMode);
+        });
+
+        // Update input display based on mode
+        function updateInputDisplay() {
+            if (isTabletMode) {
+                answerInput.style.display = 'none';
+                answerDisplay.classList.add('visible');
+                numpad.classList.add('visible');
+                answerDisplay.textContent = numpadValue || '0';
+            } else {
+                answerInput.style.display = 'block';
+                answerDisplay.classList.remove('visible');
+                numpad.classList.remove('visible');
+            }
+        }
+
+        // Numpad button handlers
+        numpadButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (answerInput.disabled) return;
+
+                const num = btn.dataset.num;
+                const action = btn.dataset.action;
+
+                if (num !== undefined) {
+                    // Add number
+                    if (numpadValue === '0') {
+                        numpadValue = num;
+                    } else {
+                        numpadValue += num;
+                    }
+                } else if (action === 'clear') {
+                    // Clear all
+                    numpadValue = '';
+                } else if (action === 'delete') {
+                    // Delete last digit
+                    numpadValue = numpadValue.slice(0, -1);
+                }
+
+                answerDisplay.textContent = numpadValue || '0';
+                answerInput.value = numpadValue;
+            });
         });
     </script>
 </body>
